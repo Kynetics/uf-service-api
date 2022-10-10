@@ -1,5 +1,0 @@
-$dokka.format:gfm
-$dokka.linkExtension:md
-$dokka.location:com.kynetics.uf.android.api$toOutV1Message(android.os.Message)com.kynetics.uf.android.api/android.os.-message/to-out-v1-message.md
-com.kynetics.uf.android.api
-com.kynetics.uf.android.api.v1
