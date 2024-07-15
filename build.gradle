@@ -1,0 +1,163 @@
+/*
+ * Copyright © 2017-2024  Kynetics  LLC
+ * 
+ * This program and the accompanying materials are made
+ * available under the terms of the Eclipse Public License 2.0
+ * which is available at https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
+ */
+
+import java.util.function.BinaryOperator
+
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+
+
+buildscript {
+    ext{
+        kotlin_version = '1.8.21'
+        detekt_version = '1.0.0-RC16'
+        dokka_version = '1.7.10'
+    }
+    repositories {
+        google()
+        mavenLocal()
+    }
+
+    dependencies {
+        classpath 'com.android.tools.build:gradle:7.4.2'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.5'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath "org.jetbrains.kotlin:kotlin-serialization:$kotlin_version"
+        classpath "org.jetbrains.dokka:dokka-gradle-plugin:$dokka_version"
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+    }
+}
+
+plugins {
+    id "kotlinx-serialization" version "$kotlin_version" apply true
+    id "io.gitlab.arturbosch.detekt" version "$detekt_version"
+    id "org.jetbrains.dokka" version "$dokka_version"
+    id 'org.ajoberstar.grgit' version '5.0.0'
+    id "org.sonarqube" version "4.4.1.3373"
+
+    // ... another plugins
+}
+
+sonar {
+    properties {
+        property "sonar.projectKey", "Kynetics_uf-android-client"
+        property "sonar.projectName", "uf-service-api"
+        property "sonar.organization", "kynetics"
+        property "sonar.sourceEncoding", "UTF-8"
+        property "sonar.host.url", "https://sonarcloud.io"
+    }
+}
+
+apply from: 'gradle/grgit.gradle'
+
+detekt {
+    config = files("$rootDir/default-detekt-config.yml", "$rootDir/detekt-config.yml")
+    toolVersion = "1.0.0-RC16"
+    input = files("$projectDir")
+    filters = ".*/resources/.*,.*/build/.*"
+}
+
+allprojects {
+    apply from: "$rootDir/ktlint.gradle"
+    apply plugin: "org.sonarqube"
+
+    repositories {
+        google()
+        mavenLocal()
+        maven { url 'https://jitpack.io' }
+    }
+}
+
+task clean(type: Delete) {
+    delete rootProject.buildDir
+}
+
+String getBody(url) {
+    def connection = new URL(url).openConnection()
+    connection.requestMethod = 'GET'
+    try {
+        if(connection.responseCode == 200 ){
+            new BufferedReader(new InputStreamReader(connection.getInputStream()))
+                    .lines().reduce(new BinaryOperator<String>() {
+                @Override
+                String apply(String s, String s2) {
+                    println "${s} \n${s2}"
+                    return "${s} \n${s2}"
+                }
+            }).orElse("{}")
+        } else if(connection.responseCode == 404 ){
+            "\"status\":\"NotFound\""
+        } else {
+            "{}"
+        }
+    } catch (IOException error) {
+        ""
+    }
+}
+
+task checkJitpackBuild(){
+    group 'Jitpack'
+
+    doLast {
+        def url = "https://jitpack.io/api/builds/com.github.Kynetics/uf-service-api/${versionFromGit(project)}"
+        def attempts = 10
+        def body = "{}"
+        while (attempts > 0 && !(body.length() > 5)){
+            body = getBody(url)
+            if(body.contains("\"status\":\"NotFound\"")){
+                body = getBody(url.toLowerCase())
+            }
+            if(body.length() < 5){
+                println "Waiting for ${url}, attempts remaning ${--attempts} ..."
+                sleep(30000)
+            }
+        }
+
+        if(body.contains("\"status\":\"Error\"")){
+            throw new IllegalStateException("jitpack build fails!")
+        } else if(body.contains("\"status\":\"NotFound\"")){
+            throw new IllegalStateException("jitpack build fails! Tag not found")
+        } else if(body.contains("\"status\":\"ok\"")){
+            println "jitpack build works!"
+        } else {
+            throw new IllegalStateException("jitpack build timeout!")
+        }
+
+    }
+
+}
+
+void configureDokka(String taskName, Project pr){
+    def currentYear = new Date().getYear() + 1900
+
+    if(pr.tasks.findByName(taskName)) {
+        pr.tasks.named(taskName).configure {
+            outputDirectory.set(file("$rootDir/kdoc/html"))
+            pluginsMapConfiguration.set(
+                    [
+                            "org.jetbrains.dokka.base.DokkaBase": """{
+                                "footerMessage": "Copyright @ $currentYear Kynetics"
+                            }"""
+                    ]
+            )
+        }
+    }
+}
+
+def dokkaProjects = ['uf-client-service-api']
+subprojects{
+    if(dokkaProjects.contains(it.name)){
+        it.afterEvaluate {
+            configureDokka('dokkaHtml', it)
+            configureDokka('dokkaHtmlPartial', it)
+        }
+    }
+}
