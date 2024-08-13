@@ -51,6 +51,6 @@ uf-client-service must be install as **SYSTEM** application.
 See also the list of [contributors](https://github.com/Kynetics/UfAndroidClient/graphs/contributors) who participated in this project.
 
 ## License
-Copyright © 2017-2024, [Kynetics LLC](https://www.kynetics.com).
+Copyright © 2017-2024, [Kynetics, Inc.](https://www.kynetics.com).
 
 Released under the [EPLv2 License](https://www.eclipse.org/legal/epl-2.0).
