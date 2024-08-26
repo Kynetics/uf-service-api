@@ -48,7 +48,7 @@ plugins {
 
 sonar {
     properties {
-        property "sonar.projectKey", "Kynetics_uf-android-client"
+        property "sonar.projectKey", "Kynetics_uf-service-api"
         property "sonar.projectName", "uf-service-api"
         property "sonar.organization", "kynetics"
         property "sonar.sourceEncoding", "UTF-8"
